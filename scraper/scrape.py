@@ -32,9 +32,13 @@ FREQUENCIA_MINIMA = 0.75
 
 def login(page, usuario: str, senha: str) -> None:
     page.goto(PORTAL_URL, wait_until="domcontentloaded")
+    page.wait_for_selector("input[name='username']", timeout=30000)
     page.fill("input[name='username']", usuario)
     page.fill("input[name='password']", senha)
-    page.click("button[type='submit']")
+
+    # O botão de login nem sempre é uma tag <button> (framework legado do
+    # portal), então usamos o name do campo submit em vez do type/tag.
+    page.click("[name='sendCredentials']")
     page.wait_for_load_state("networkidle")
 
     if "login" in page.url.lower() or page.locator("input[name='password']").count() > 0:
