@@ -89,8 +89,7 @@ def extract_horario(page) -> list[dict]:
     page.wait_for_timeout(3000)
 
     rows = extract_grid_by_col_classes(page, "#grpHorarioAulas")
-    if not rows:
-        _save_debug(page, "horario")
+    _save_debug(page, "horario")  # TEMP: sempre salva pra investigar estrutura real do grid
     return rows
 
 
