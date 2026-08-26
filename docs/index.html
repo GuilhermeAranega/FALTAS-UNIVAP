@@ -129,6 +129,7 @@
   .falta-meta.ok b { color: var(--ok); }
   .falta-meta.warn b { color: var(--warn); }
   .falta-meta.risk b { color: var(--risk); }
+  .falta-meta.auto { font-size: 12px; color: var(--text-faint); margin-top: 4px; }
 
   .erro { text-align: center; color: var(--text-dim); padding: 60px 20px; font-size: 14px; }
 
@@ -445,6 +446,46 @@ function renderCorpoAula(a, comHorarioLinha) {
   `;
 }
 
+function nivelDe(pct) {
+  if (pct >= 20) return { nivel: 'risk', cor: 'var(--risk)' };
+  if (pct >= 12) return { nivel: 'warn', cor: 'var(--warn)' };
+  return { nivel: 'ok', cor: 'var(--ok)' };
+}
+
+/** Estima faltas/dias-restantes "segundo seus check-ins" (Atalho do iPhone),
+ * independente do que o portal mostra. Só conta a partir do seu primeiro
+ * check-in — antes disso não temos como saber se você foi ou não. */
+function computeAutotrack(d) {
+  const presencas = DATA.presencas || [];
+  if (presencas.length === 0 || !d.codigo) return null;
+
+  const diasComAula = new Set((DATA.grade || []).filter(g => g.codigo === d.codigo).map(g => g.dia_semana_js));
+  if (diasComAula.size === 0) return null;
+
+  const datasPresenca = presencas.map(s => new Date(s + 'T00:00:00')).sort((a, b) => a - b);
+  const inicio = datasPresenca[0];
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  let diasEsperados = 0;
+  for (let dt = new Date(inicio); dt <= hoje; dt.setDate(dt.getDate() + 1)) {
+    if (diasComAula.has(dt.getDay())) diasEsperados++;
+  }
+  if (diasEsperados === 0) return null;
+
+  const diasPresente = datasPresenca.filter(dt => diasComAula.has(dt.getDay())).length;
+  const faltasDias = Math.max(0, diasEsperados - diasPresente);
+  const pct = Math.round((faltasDias / diasEsperados) * 1000) / 10;
+
+  let podeFaltarDias = null;
+  if (d.aulas_por_dia_medio && d.aulas_previstas != null && DATA.frequencia_minima != null) {
+    const budgetDias = Math.floor((d.aulas_previstas * (1 - DATA.frequencia_minima)) / d.aulas_por_dia_medio);
+    podeFaltarDias = Math.max(0, budgetDias - faltasDias);
+  }
+
+  return { pct, podeFaltarDias, faltasDias, desde: inicio };
+}
+
 function renderFaltas() {
   const disciplinas = DATA.disciplinas || [];
   if (disciplinas.length === 0) return '';
@@ -452,12 +493,18 @@ function renderFaltas() {
   let html = '<div class="section-title">Faltas</div>';
   disciplinas.forEach(d => {
     const pct = d.percentual_faltas ?? 0;
-    let nivel = 'ok', cor = 'var(--ok)';
-    if (pct >= 20) { nivel = 'risk'; cor = 'var(--risk)'; }
-    else if (pct >= 12) { nivel = 'warn'; cor = 'var(--warn)'; }
+    const { nivel, cor } = nivelDe(pct);
 
     const dias = d.pode_faltar_dias;
     const diasTexto = dias != null ? `Pode faltar mais ${dias} dia${dias === 1 ? '' : 's'}` : `Pode faltar mais ${d.pode_faltar_ainda ?? '—'} aulas`;
+
+    const auto = computeAutotrack(d);
+    let autoHtml = '';
+    if (auto) {
+      const { nivel: nivelAuto, cor: corAuto } = nivelDe(auto.pct);
+      const diasAutoTexto = auto.podeFaltarDias != null ? `pode faltar mais ${auto.podeFaltarDias} dia${auto.podeFaltarDias === 1 ? '' : 's'}` : `${auto.faltasDias} falta${auto.faltasDias === 1 ? '' : 's'}`;
+      autoHtml = `<div class="falta-meta auto ${nivelAuto}">📍 Segundo seus check-ins: <b style="color:${corAuto}">${auto.pct}%</b> · ${diasAutoTexto}</div>`;
+    }
 
     html += `
       <div class="falta-item">
@@ -466,7 +513,8 @@ function renderFaltas() {
           <div class="falta-count">${d.faltas ?? '—'}</div>
         </div>
         <div class="falta-bar-bg"><div class="falta-bar-fill" style="width:${Math.min(pct,100)}%;background:${cor}"></div></div>
-        <div class="falta-meta ${nivel}"><b>${pct}%</b> · ${diasTexto}</div>
+        <div class="falta-meta ${nivel}">Portal: <b>${pct}%</b> · ${diasTexto}</div>
+        ${autoHtml}
       </div>`;
   });
   return html;

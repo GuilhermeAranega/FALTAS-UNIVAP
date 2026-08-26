@@ -245,6 +245,7 @@ def build_summary(raw_rows: list[dict], horario_por_codigo: dict[str, dict]) -> 
 
         summary.append({
             "disciplina": disciplina,
+            "codigo": codigo_disciplina(disciplina),
             "situacao": situacao,
             "faltas": faltas,
             "aulas_previstas": aulas,
