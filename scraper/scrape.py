@@ -118,12 +118,21 @@ def main() -> int:
         print("Defina UNIVAP_USER e UNIVAP_PASS como variáveis de ambiente.", file=sys.stderr)
         return 1
 
+    debug_dir = Path(__file__).resolve().parent.parent / "debug"
+
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
         try:
             login(page, usuario, senha)
             raw_rows = extract_grid(page)
+            if not raw_rows:
+                # Seletores do grid não bateram — salva screenshot + HTML
+                # pra dar pra debugar sem precisar da senha do aluno.
+                debug_dir.mkdir(parents=True, exist_ok=True)
+                page.screenshot(path=str(debug_dir / "boletim.png"), full_page=True)
+                (debug_dir / "boletim.html").write_text(page.content(), encoding="utf-8")
+                print("Aviso: 0 disciplinas extraídas — screenshot/HTML de debug salvos em debug/.", file=sys.stderr)
         finally:
             browser.close()
 

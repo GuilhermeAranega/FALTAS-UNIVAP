@@ -38,6 +38,15 @@ jobs:
           UNIVAP_PASS: ${{ secrets.UNIVAP_PASS }}
         run: python scraper/scrape.py
 
+      - name: Upload debug (só se a extração vier vazia)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug
+          path: debug/
+          if-no-files-found: ignore
+          retention-days: 3
+
       # data.json fica só no runner e no artifact do Pages — nunca é
       # commitado no repositório, então dados pessoais de faltas não
       # vazam no histórico do git de um repo público.
