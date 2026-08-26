@@ -51,25 +51,23 @@ def extract_grid(page) -> list[dict]:
     page.wait_for_selector("#grdBoletim", timeout=30000)
     page.wait_for_timeout(3000)  # dá tempo pro AJAX popular o grid
 
-    headers = page.eval_on_selector_all(
-        "#grdBoletim .x-grid3-hd-row td .x-grid3-hd-inner, #grdBoletim th",
-        "els => els.map(e => e.innerText.trim()).filter(Boolean)",
-    )
-
+    # As células do grid (Ext.js) trazem o nome do campo real na classe CSS
+    # (ex: x-grid3-col-faltasAluno), independente do texto visível na coluna
+    # — isso inclui campos ocultos como aulasPrevistas/percPresenca que não
+    # aparecem no layout padrão da tela.
     rows = page.eval_on_selector_all(
-        "#grdBoletim .x-grid3-row, #grdBoletim tbody tr",
+        "#grdBoletim .x-grid3-row",
         """rows => rows.map(r => {
-            const cells = r.querySelectorAll('td .x-grid3-cell-inner, td');
-            return Array.from(cells).map(c => c.innerText.trim());
-        }).filter(r => r.length > 0)""",
+            const cells = r.querySelectorAll('.x-grid3-cell-inner');
+            const record = {};
+            cells.forEach(c => {
+                const m = [...c.classList].map(cls => cls.match(/^x-grid3-col-(.+)$/)).find(Boolean);
+                if (m) record[m[1]] = c.innerText.trim();
+            });
+            return record;
+        }).filter(r => Object.keys(r).length > 0)""",
     )
-
-    records = []
-    for row in rows:
-        if not headers or len(row) != len(headers):
-            continue
-        records.append(dict(zip(headers, row)))
-    return records
+    return rows
 
 
 def parse_number(value: str) -> float | None:
@@ -83,18 +81,26 @@ def parse_number(value: str) -> float | None:
 
 
 def build_summary(raw_rows: list[dict]) -> list[dict]:
-    """Normaliza as colunas (nomes variam por instituição/versão) para um
-    formato estável: disciplina, faltas, aulas_dadas, percentual_faltas."""
+    """Mapeia os campos do grid do Boletim (Techne/Lyceum) pro nosso formato:
+    disciplina, faltas, aulas_previstas, percentual_faltas, pode_faltar_ainda."""
     summary = []
     for row in raw_rows:
-        disciplina = next((v for k, v in row.items() if "disciplina" in k.lower() or "matéria" in k.lower() or "materia" in k.lower()), None)
-        faltas = next((parse_number(v) for k, v in row.items() if "falta" in k.lower()), None)
-        aulas = next((parse_number(v) for k, v in row.items() if "aula" in k.lower() or "carga" in k.lower()), None)
-
-        if disciplina is None:
+        disciplina = row.get("disciplinas")
+        if not disciplina:
             continue
 
-        percentual_faltas = (faltas / aulas) if (faltas is not None and aulas) else None
+        faltas = parse_number(row.get("faltasAluno"))
+        aulas = parse_number(row.get("aulasPrevistas"))
+        situacao = row.get("situacaoMatricula")
+        perc_presenca = parse_number(row.get("percPresenca"))
+
+        # O portal já calcula percPresenca (% de presença); preferimos usar
+        # esse valor oficial em vez de recalcular, e só caímos pro cálculo
+        # manual (faltas/aulas) se ele não vier preenchido.
+        if perc_presenca is not None:
+            percentual_faltas = 1 - (perc_presenca / 100)
+        else:
+            percentual_faltas = (faltas / aulas) if (faltas is not None and aulas) else None
         pode_faltar_ainda = None
         if aulas is not None and faltas is not None:
             limite_faltas = aulas * (1 - FREQUENCIA_MINIMA)
@@ -102,11 +108,11 @@ def build_summary(raw_rows: list[dict]) -> list[dict]:
 
         summary.append({
             "disciplina": disciplina,
+            "situacao": situacao,
             "faltas": faltas,
             "aulas_previstas": aulas,
             "percentual_faltas": round(percentual_faltas * 100, 1) if percentual_faltas is not None else None,
             "pode_faltar_ainda": pode_faltar_ainda,
-            "raw": row,
         })
     return summary
 
