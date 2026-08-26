@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minhas Faltas — UNIVAP</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --text: #1a1a1a;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --green: #16a34a;
+    --yellow: #d97706;
+    --red: #dc2626;
+    --accent: #0054a6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115;
+      --card: #1a1d24;
+      --text: #f0f0f0;
+      --muted: #9ca3af;
+      --border: #2a2d35;
+      --green: #4ade80;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --accent: #6ea8ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 60px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .updated { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .disciplina { font-weight: 600; font-size: 16px; }
+  .pct { font-size: 14px; font-weight: 600; }
+  .bar-bg {
+    height: 10px;
+    background: var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .bar-fill { height: 100%; border-radius: 6px; transition: width .3s; }
+  .details {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .details b { color: var(--text); }
+  .empty, .error {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 20px;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📋 Minhas Faltas</h1>
+    <div class="updated" id="updated">Carregando...</div>
+    <div id="content"></div>
+  </div>
+
+<script>
+async function load() {
+  const el = document.getElementById('content');
+  const updatedEl = document.getElementById('updated');
+  try {
+    const res = await fetch('data.json?_=' + Date.now());
+    if (!res.ok) throw new Error('sem dados ainda');
+    const data = await res.json();
+
+    const dt = new Date(data.atualizado_em);
+    updatedEl.textContent = 'Atualizado em ' + dt.toLocaleString('pt-BR');
+
+    if (!data.disciplinas || data.disciplinas.length === 0) {
+      el.innerHTML = '<div class="empty">Nenhuma disciplina encontrada ainda.</div>';
+      return;
+    }
+
+    el.innerHTML = data.disciplinas.map(renderCard).join('');
+  } catch (e) {
+    updatedEl.textContent = '';
+    el.innerHTML = '<div class="error">Ainda não há dados. O cron roda 1x por dia — aguarde a primeira execução.</div>';
+  }
+}
+
+function renderCard(d) {
+  const pct = d.percentual_faltas ?? 0;
+  const color = pct >= 20 ? 'var(--red)' : pct >= 12 ? 'var(--yellow)' : 'var(--green)';
+  const podeface = d.pode_faltar_ainda;
+
+  return `
+    <div class="card">
+      <div class="card-head">
+        <div class="disciplina">${escapeHtml(d.disciplina)}</div>
+        <div class="pct" style="color:${color}">${pct != null ? pct + '%' : '—'}</div>
+      </div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(pct,100)}%;background:${color}"></div></div>
+      <div class="details">
+        <span>Faltas: <b>${d.faltas ?? '—'}</b> / ${d.aulas_previstas ?? '—'} aulas</span>
+        <span>Pode faltar mais: <b>${podeface != null ? podeface : '—'}</b></span>
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+load();
+</script>
+</body>
+</html>

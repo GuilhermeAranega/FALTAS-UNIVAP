@@ -1,0 +1,51 @@
+name: Atualizar faltas
+
+on:
+  schedule:
+    - cron: "0 9 * * *"   # todo dia às 09:00 UTC (~06:00 em Brasília)
+  workflow_dispatch: {}    # permite rodar manualmente pelo GitHub
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  scrape-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: |
+          pip install -r scraper/requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Rodar scraper
+        env:
+          UNIVAP_USER: ${{ secrets.UNIVAP_USER }}
+          UNIVAP_PASS: ${{ secrets.UNIVAP_PASS }}
+        run: python scraper/scrape.py
+
+      # data.json fica só no runner e no artifact do Pages — nunca é
+      # commitado no repositório, então dados pessoais de faltas não
+      # vazam no histórico do git de um repo público.
+      - name: Preparar artifact do Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
