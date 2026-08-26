@@ -3,136 +3,414 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Minhas Faltas — UNIVAP</title>
+<title>Faltas UNIVAP</title>
 <style>
   :root {
     --bg: #f4f5f7;
-    --card: #ffffff;
-    --text: #1a1a1a;
-    --muted: #6b7280;
+    --surface: #ffffff;
+    --text: #17181c;
+    --text-dim: #6b7280;
+    --text-faint: #9aa0ab;
     --border: #e5e7eb;
-    --green: #16a34a;
-    --yellow: #d97706;
-    --red: #dc2626;
-    --accent: #0054a6;
+    --accent: #2563eb;
+    --accent-bg: rgba(37,99,235,0.08);
+    --ok: #16a34a;
+    --warn: #d97706;
+    --risk: #dc2626;
+    --ok-bg: rgba(22,163,74,0.12);
+    --warn-bg: rgba(217,119,6,0.14);
+    --risk-bg: rgba(220,38,38,0.14);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0f1115;
-      --card: #1a1d24;
-      --text: #f0f0f0;
-      --muted: #9ca3af;
-      --border: #2a2d35;
-      --green: #4ade80;
-      --yellow: #fbbf24;
-      --red: #f87171;
-      --accent: #6ea8ff;
+      --bg: #0c0d10;
+      --surface: #16171b;
+      --text: #f2f2f3;
+      --text-dim: #9199a5;
+      --text-faint: #5b6270;
+      --border: #24262c;
+      --accent: #5b9bff;
+      --accent-bg: rgba(91,155,255,0.12);
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --risk: #f87171;
+      --ok-bg: rgba(74,222,128,0.10);
+      --warn-bg: rgba(251,191,36,0.12);
+      --risk-bg: rgba(248,113,113,0.12);
     }
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     margin: 0;
-    padding: 24px 16px 60px;
     background: var(--bg);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 720px; margin: 0 auto; }
-  h1 { font-size: 22px; margin-bottom: 4px; }
-  .updated { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 18px 20px;
-    margin-bottom: 14px;
+  .wrap { max-width: 560px; margin: 0 auto; padding: 20px 16px 80px; }
+
+  /* Header */
+  header { margin-bottom: 22px; }
+  header .hoje { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  header .data { color: var(--text-dim); font-size: 14px; margin-top: 2px; }
+  header .sync { color: var(--text-faint); font-size: 12.5px; margin-top: 6px; }
+
+  /* Section titles */
+  .section-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin: 28px 0 10px;
   }
-  .card-head {
+  .section-title:first-of-type { margin-top: 0; }
+
+  /* Aulas */
+  .aula-list { display: flex; flex-direction: column; }
+  .aula-row {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 10px;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
   }
-  .disciplina { font-weight: 600; font-size: 16px; }
-  .pct { font-size: 14px; font-weight: 600; }
-  .bar-bg {
-    height: 10px;
-    background: var(--border);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .bar-fill { height: 100%; border-radius: 6px; transition: width .3s; }
-  .details {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
+  .aula-row:last-child { border-bottom: none; }
+  .aula-row.passada { opacity: 0.45; }
+  .aula-check { width: 16px; flex-shrink: 0; text-align: center; color: var(--text-faint); font-size: 13px; padding-top: 2px; }
+  .aula-body { flex: 1; min-width: 0; }
+  .aula-horario { font-size: 13px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .aula-nome { font-size: 15.5px; font-weight: 600; margin-top: 1px; line-height: 1.3; }
+  .aula-local {
     font-size: 13px;
-    color: var(--muted);
+    color: var(--text-dim);
+    margin-top: 3px;
+    display: inline-block;
+    cursor: pointer;
   }
-  .details b { color: var(--text); }
-  .empty, .error {
-    text-align: center;
-    color: var(--muted);
-    padding: 40px 20px;
+  .aula-local:active { opacity: 0.6; }
+  .aula-local.add-btn { color: var(--accent); }
+
+  .aula-destaque {
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: var(--accent-bg);
+    border: 1px solid transparent;
+    margin: 2px 0;
   }
+  .aula-destaque .tag {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .aula-destaque .aula-horario { color: var(--text-dim); }
+
+  .encerradas {
+    color: var(--text-faint);
+    font-size: 13.5px;
+    padding: 4px 0 2px;
+  }
+  .encerradas .linha { display: flex; gap: 8px; padding: 3px 0; }
+  .encerradas .linha span.h { font-variant-numeric: tabular-nums; width: 44px; flex-shrink: 0; }
+  .vazio { color: var(--text-dim); font-size: 14.5px; padding: 6px 0; }
+
+  /* Faltas */
+  .falta-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .falta-item:last-child { border-bottom: none; }
+  .falta-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 7px; }
+  .falta-nome { font-size: 14.5px; font-weight: 600; line-height: 1.3; }
+  .falta-count { font-size: 14.5px; font-weight: 700; color: var(--text-dim); flex-shrink: 0; }
+  .falta-bar-bg { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .falta-bar-fill { height: 100%; border-radius: 3px; }
+  .falta-meta { font-size: 12.5px; color: var(--text-dim); margin-top: 6px; }
+  .falta-meta b { font-weight: 700; }
+  .falta-meta.ok b { color: var(--ok); }
+  .falta-meta.warn b { color: var(--warn); }
+  .falta-meta.risk b { color: var(--risk); }
+
+  .erro { text-align: center; color: var(--text-dim); padding: 60px 20px; font-size: 14px; }
+
+  /* Bottom sheet */
+  .sheet-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity .18s ease;
+    z-index: 50;
+  }
+  .sheet-overlay.open { opacity: 1; pointer-events: auto; }
+  .sheet {
+    background: var(--surface);
+    width: 100%; max-width: 560px;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+    transform: translateY(100%);
+    transition: transform .22s ease;
+  }
+  .sheet-overlay.open .sheet { transform: translateY(0); }
+  .sheet h3 { margin: 0 0 16px; font-size: 15.5px; font-weight: 700; }
+  .sheet label { display: block; font-size: 12.5px; color: var(--text-dim); margin-bottom: 5px; margin-top: 12px; }
+  .sheet label:first-of-type { margin-top: 0; }
+  .sheet input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 12px;
+    font-size: 15px;
+    color: var(--text);
+  }
+  .sheet input:focus { outline: none; border-color: var(--accent); }
+  .sheet-actions { display: flex; justify-content: flex-end; gap: 18px; margin-top: 20px; }
+  .sheet-actions button {
+    background: none; border: none; font-size: 14.5px; font-weight: 600;
+    padding: 8px 4px; cursor: pointer; color: var(--text-dim);
+  }
+  .sheet-actions button.primary { color: var(--accent); }
 </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>📋 Minhas Faltas</h1>
-    <div class="updated" id="updated">Carregando...</div>
+    <header>
+      <div class="hoje">Hoje</div>
+      <div class="data" id="dataAtual">—</div>
+      <div class="sync" id="syncInfo"></div>
+    </header>
+
     <div id="content"></div>
   </div>
 
-<script>
-async function load() {
-  const el = document.getElementById('content');
-  const updatedEl = document.getElementById('updated');
-  try {
-    const res = await fetch('data.json?_=' + Date.now());
-    if (!res.ok) throw new Error('sem dados ainda');
-    const data = await res.json();
-
-    const dt = new Date(data.atualizado_em);
-    updatedEl.textContent = 'Atualizado em ' + dt.toLocaleString('pt-BR');
-
-    if (!data.disciplinas || data.disciplinas.length === 0) {
-      el.innerHTML = '<div class="empty">Nenhuma disciplina encontrada ainda.</div>';
-      return;
-    }
-
-    el.innerHTML = data.disciplinas.map(renderCard).join('');
-  } catch (e) {
-    updatedEl.textContent = '';
-    el.innerHTML = '<div class="error">Ainda não há dados. O cron roda 1x por dia — aguarde a primeira execução.</div>';
-  }
-}
-
-function renderCard(d) {
-  const pct = d.percentual_faltas ?? 0;
-  const color = pct >= 20 ? 'var(--red)' : pct >= 12 ? 'var(--yellow)' : 'var(--green)';
-
-  const dias = d.pode_faltar_dias;
-  const diasTexto = dias != null ? `${dias} dia${dias === 1 ? '' : 's'}` : `${d.pode_faltar_ainda ?? '—'} aulas`;
-
-  return `
-    <div class="card">
-      <div class="card-head">
-        <div class="disciplina">${escapeHtml(d.disciplina)}</div>
-        <div class="pct" style="color:${color}">${pct != null ? pct + '%' : '—'}</div>
-      </div>
-      <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(pct,100)}%;background:${color}"></div></div>
-      <div class="details">
-        <span>Faltas: <b>${d.faltas ?? '—'}</b> / ${d.aulas_previstas ?? '—'} aulas</span>
-        <span>Pode faltar mais: <b>${diasTexto}</b></span>
+  <div class="sheet-overlay" id="sheetOverlay">
+    <div class="sheet">
+      <h3 id="sheetTitulo">Disciplina</h3>
+      <label for="sheetBloco">Bloco</label>
+      <input id="sheetBloco" type="text" placeholder="Ex: B" maxlength="40">
+      <label for="sheetSala">Sala</label>
+      <input id="sheetSala" type="text" placeholder="Ex: Laboratório 03" maxlength="60">
+      <div class="sheet-actions">
+        <button id="sheetCancelar">Cancelar</button>
+        <button class="primary" id="sheetSalvar">Salvar</button>
       </div>
     </div>
-  `;
+  </div>
+
+<script>
+const DIAS_PT = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+const MESES_PT = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+
+let DATA = null;
+let sheetCodigoAtual = null;
+
+function getClassLocations() {
+  try {
+    const raw = localStorage.getItem('classLocations');
+    const parsed = raw ? JSON.parse(raw) : {};
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+function getClassLocation(codigo) {
+  return getClassLocations()[codigo] || null;
+}
+function saveClassLocation(codigo, location) {
+  const all = getClassLocations();
+  all[codigo] = location;
+  localStorage.setItem('classLocations', JSON.stringify(all));
+}
+function removeClassLocation(codigo) {
+  const all = getClassLocations();
+  delete all[codigo];
+  localStorage.setItem('classLocations', JSON.stringify(all));
 }
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+function toMinutes(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function formatDataHoje() {
+  const now = new Date();
+  const dia = DIAS_PT[now.getDay()];
+  return `${dia}, ${now.getDate()} de ${MESES_PT[now.getMonth()]}`;
+}
+
+async function load() {
+  const contentEl = document.getElementById('content');
+  document.getElementById('dataAtual').textContent = formatDataHoje();
+
+  try {
+    const res = await fetch('data.json?_=' + Date.now());
+    if (!res.ok) throw new Error('sem dados');
+    DATA = await res.json();
+  } catch (e) {
+    document.getElementById('syncInfo').textContent = '';
+    contentEl.innerHTML = '<div class="erro">Ainda não há dados. O cron roda 1x por dia — aguarde a primeira execução.</div>';
+    return;
+  }
+
+  const dt = new Date(DATA.atualizado_em);
+  document.getElementById('syncInfo').textContent = isNaN(dt) ? '' :
+    `Atualizado hoje às ${dt.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}`;
+
+  render();
+}
+
+function render() {
+  const contentEl = document.getElementById('content');
+  contentEl.innerHTML = renderHoje() + renderFaltas();
+  attachLocalHandlers();
+}
+
+function minutosParaTexto(min) {
+  if (min < 60) return `${min} MIN`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return m === 0 ? `${h}H` : `${h}H ${m}MIN`;
+}
+
+function renderHoje() {
+  const grade = DATA.grade || [];
+  const now = new Date();
+  const diaSemana = now.getDay();
+  const agoraMin = now.getHours() * 60 + now.getMinutes();
+
+  const aulasHoje = grade
+    .filter(a => a.dia_semana_js === diaSemana)
+    .map(a => ({ ...a, inicioMin: toMinutes(a.inicio), fimMin: toMinutes(a.fim) }))
+    .sort((a, b) => a.inicioMin - b.inicioMin);
+
+  let html = '<div class="section-title">Hoje</div>';
+
+  if (aulasHoje.length === 0) {
+    return html + '<div class="vazio">Nenhuma aula hoje.</div>';
+  }
+
+  const todasEncerradas = aulasHoje.every(a => a.fimMin <= agoraMin);
+
+  if (todasEncerradas) {
+    html += '<div class="encerradas">';
+    aulasHoje.forEach(a => {
+      html += `<div class="linha"><span class="h">✓ ${a.inicio}</span><span>${escapeHtml(nomeCurto(a.disciplina))}</span></div>`;
+    });
+    html += '<div style="margin-top:6px;">Aulas encerradas por hoje.</div></div>';
+    return html;
+  }
+
+  const atual = aulasHoje.find(a => agoraMin >= a.inicioMin && agoraMin < a.fimMin);
+  const proxima = !atual ? aulasHoje.find(a => a.inicioMin > agoraMin) : null;
+
+  html += '<div class="aula-list">';
+  aulasHoje.forEach(a => {
+    const isPassada = a.fimMin <= agoraMin;
+    const isAtual = atual && atual === a;
+    const isProxima = proxima && proxima === a;
+
+    if (isAtual || isProxima) {
+      const tag = isAtual ? 'AGORA' : `PRÓXIMA · EM ${minutosParaTexto(a.inicioMin - agoraMin)}`;
+      html += `
+        <div class="aula-destaque">
+          <div class="tag">${tag}</div>
+          ${renderCorpoAula(a, false)}
+        </div>`;
+    } else {
+      html += `<div class="aula-row ${isPassada ? 'passada' : ''}">
+        <div class="aula-check">${isPassada ? '✓' : ''}</div>
+        <div class="aula-body">${renderCorpoAula(a, true)}</div>
+      </div>`;
+    }
+  });
+  html += '</div>';
+  return html;
+}
+
+function nomeCurto(disciplina) {
+  const partes = disciplina.split(' - ');
+  return partes.length > 1 ? partes.slice(1).join(' - ') : disciplina;
+}
+
+function renderCorpoAula(a, comHorarioLinha) {
+  const local = getClassLocation(a.codigo);
+  const localHtml = local
+    ? `<span class="aula-local" data-codigo="${escapeHtml(a.codigo)}" data-nome="${escapeHtml(nomeCurto(a.disciplina))}">${escapeHtml([local.block && 'Bloco ' + local.block, local.room].filter(Boolean).join(' · '))}</span>`
+    : `<span class="aula-local add-btn" data-codigo="${escapeHtml(a.codigo)}" data-nome="${escapeHtml(nomeCurto(a.disciplina))}">+ Adicionar sala</span>`;
+
+  return `
+    ${comHorarioLinha ? `<div class="aula-horario">${a.inicio} — ${a.fim}</div>` : `<div class="aula-horario">${a.inicio} — ${a.fim}</div>`}
+    <div class="aula-nome">${escapeHtml(nomeCurto(a.disciplina))}</div>
+    ${localHtml}
+  `;
+}
+
+function renderFaltas() {
+  const disciplinas = DATA.disciplinas || [];
+  if (disciplinas.length === 0) return '';
+
+  let html = '<div class="section-title">Faltas</div>';
+  disciplinas.forEach(d => {
+    const pct = d.percentual_faltas ?? 0;
+    let nivel = 'ok', cor = 'var(--ok)';
+    if (pct >= 20) { nivel = 'risk'; cor = 'var(--risk)'; }
+    else if (pct >= 12) { nivel = 'warn'; cor = 'var(--warn)'; }
+
+    const dias = d.pode_faltar_dias;
+    const diasTexto = dias != null ? `Pode faltar mais ${dias} dia${dias === 1 ? '' : 's'}` : `Pode faltar mais ${d.pode_faltar_ainda ?? '—'} aulas`;
+
+    html += `
+      <div class="falta-item">
+        <div class="falta-head">
+          <div class="falta-nome">${escapeHtml(nomeCurto(d.disciplina))}</div>
+          <div class="falta-count">${d.faltas ?? '—'}</div>
+        </div>
+        <div class="falta-bar-bg"><div class="falta-bar-fill" style="width:${Math.min(pct,100)}%;background:${cor}"></div></div>
+        <div class="falta-meta ${nivel}"><b>${pct}%</b> · ${diasTexto}</div>
+      </div>`;
+  });
+  return html;
+}
+
+function attachLocalHandlers() {
+  document.querySelectorAll('.aula-local').forEach(el => {
+    el.addEventListener('click', () => abrirSheet(el.dataset.codigo, el.dataset.nome));
+  });
+}
+
+function abrirSheet(codigo, nomeDisciplina) {
+  sheetCodigoAtual = codigo;
+  document.getElementById('sheetTitulo').textContent = nomeDisciplina;
+  const atual = getClassLocation(codigo) || {};
+  document.getElementById('sheetBloco').value = atual.block || '';
+  document.getElementById('sheetSala').value = atual.room || '';
+  document.getElementById('sheetOverlay').classList.add('open');
+}
+
+function fecharSheet() {
+  document.getElementById('sheetOverlay').classList.remove('open');
+  sheetCodigoAtual = null;
+}
+
+document.getElementById('sheetCancelar').addEventListener('click', fecharSheet);
+document.getElementById('sheetOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'sheetOverlay') fecharSheet();
+});
+document.getElementById('sheetSalvar').addEventListener('click', () => {
+  if (!sheetCodigoAtual) return;
+  const block = document.getElementById('sheetBloco').value.trim();
+  const room = document.getElementById('sheetSala').value.trim();
+  if (!block && !room) {
+    removeClassLocation(sheetCodigoAtual);
+  } else {
+    saveClassLocation(sheetCodigoAtual, { block, room });
+  }
+  fecharSheet();
+  render();
+});
 
 load();
 </script>

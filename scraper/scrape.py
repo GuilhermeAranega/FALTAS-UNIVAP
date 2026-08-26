@@ -36,6 +36,18 @@ FREQUENCIA_MINIMA = 0.75
 # não o "name" (descHorario2...) — confirmado inspecionando o HTML renderizado.
 DIAS_SEMANA = ["gpfSegunda", "gpfTerca", "gpfQuarta", "gpfQuinta", "gpfSexta", "gpfSabado", "gpfDomingo"]
 
+# Mapeia cada coluna de dia pro índice usado por JS Date.getDay() (0=Domingo..6=Sábado)
+# e pro nome em português, pra facilitar o consumo no frontend.
+DIA_INFO = {
+    "gpfDomingo": (0, "Domingo"),
+    "gpfSegunda": (1, "Segunda-feira"),
+    "gpfTerca": (2, "Terça-feira"),
+    "gpfQuarta": (3, "Quarta-feira"),
+    "gpfQuinta": (4, "Quinta-feira"),
+    "gpfSexta": (5, "Sexta-feira"),
+    "gpfSabado": (6, "Sábado"),
+}
+
 
 def login(page, usuario: str, senha: str) -> None:
     page.goto(BOLETIM_URL, wait_until="domcontentloaded")
@@ -150,6 +162,51 @@ def build_aulas_por_dia(horario_rows: list[dict]) -> dict[str, dict]:
     return resultado
 
 
+def build_grade(horario_rows: list[dict]) -> list[dict]:
+    """Constrói a grade horária semanal (dia + horário + disciplina), mesclando
+    períodos consecutivos da mesma disciplina no mesmo dia num único bloco
+    (ex: 19:00-19:50 + 19:50-20:40 vira um bloco só 19:00-20:40)."""
+    entradas = []
+    for row in horario_rows:
+        horario_label = row.get("gpfHorarios", "")
+        m_horario = re.match(r"(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})", horario_label)
+        if not m_horario:
+            continue
+        inicio, fim = m_horario.groups()
+
+        for dia_col, (dia_idx, dia_nome) in DIA_INFO.items():
+            texto = (row.get(dia_col) or "").replace("\n", " ").strip()
+            if not texto:
+                continue
+            m_cod = re.search(r"\b([A-Za-z]{1,3}\d{5,6})\b", texto)
+            codigo = m_cod.group(1).upper() if m_cod else texto.upper()
+            entradas.append({
+                "dia_semana_js": dia_idx,
+                "dia_nome": dia_nome,
+                "inicio": inicio,
+                "fim": fim,
+                "codigo": codigo,
+                "disciplina": texto,
+            })
+
+    entradas.sort(key=lambda e: (e["dia_semana_js"], e["inicio"]))
+
+    blocos: list[dict] = []
+    for e in entradas:
+        anterior = blocos[-1] if blocos else None
+        if (
+            anterior
+            and anterior["dia_semana_js"] == e["dia_semana_js"]
+            and anterior["codigo"] == e["codigo"]
+            and anterior["fim"] == e["inicio"]
+        ):
+            anterior["fim"] = e["fim"]
+        else:
+            blocos.append(dict(e))
+
+    return blocos
+
+
 def build_summary(raw_rows: list[dict], horario_por_codigo: dict[str, dict]) -> list[dict]:
     """Mapeia os campos do grid do Boletim (Techne/Lyceum) pro nosso formato:
     disciplina, faltas, aulas_previstas, percentual_faltas, pode_faltar_ainda
@@ -218,6 +275,7 @@ def main() -> int:
 
     horario_por_codigo = build_aulas_por_dia(horario_rows)
     summary = build_summary(raw_rows, horario_por_codigo)
+    grade = build_grade(horario_rows)
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(
@@ -226,13 +284,14 @@ def main() -> int:
                 "atualizado_em": datetime.now(timezone.utc).isoformat(),
                 "frequencia_minima": FREQUENCIA_MINIMA,
                 "disciplinas": summary,
+                "grade": grade,
             },
             ensure_ascii=False,
             indent=2,
         ),
         encoding="utf-8",
     )
-    print(f"OK — {len(summary)} disciplinas, {len(horario_por_codigo)} com horário mapeado, salvas em {OUTPUT_PATH}")
+    print(f"OK — {len(summary)} disciplinas, {len(horario_por_codigo)} com horário mapeado, {len(grade)} blocos de grade, salvas em {OUTPUT_PATH}")
     return 0
 
 
