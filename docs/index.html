@@ -111,7 +111,9 @@ async function load() {
 function renderCard(d) {
   const pct = d.percentual_faltas ?? 0;
   const color = pct >= 20 ? 'var(--red)' : pct >= 12 ? 'var(--yellow)' : 'var(--green)';
-  const podeface = d.pode_faltar_ainda;
+
+  const dias = d.pode_faltar_dias;
+  const diasTexto = dias != null ? `${dias} dia${dias === 1 ? '' : 's'}` : `${d.pode_faltar_ainda ?? '—'} aulas`;
 
   return `
     <div class="card">
@@ -122,7 +124,7 @@ function renderCard(d) {
       <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(pct,100)}%;background:${color}"></div></div>
       <div class="details">
         <span>Faltas: <b>${d.faltas ?? '—'}</b> / ${d.aulas_previstas ?? '—'} aulas</span>
-        <span>Pode faltar mais: <b>${podeface != null ? podeface : '—'}</b></span>
+        <span>Pode faltar mais: <b>${diasTexto}</b></span>
       </div>
     </div>
   `;
