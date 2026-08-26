@@ -39,6 +39,58 @@ suas credenciais no fork de outra pessoa.
 Seu dashboard fica em `https://<seu-usuario>.github.io/<repo>/`, visível só pra quem
 tiver o link — os dados de faltas de ninguém ficam versionados no código.
 
+## Check-in manual de presença (opcional)
+
+Às vezes o professor esquece de marcar a frequência certinho no portal. Pra ter um
+registro seu, independente da UNIVAP, dá pra configurar um Atalho no iPhone que
+dispara um "cheguei na faculdade" sempre que você chega — sem servidor próprio,
+usando só GitHub (Actions + um Gist secreto como armazenamento).
+
+### 1. Criar o Gist secreto (cache)
+
+Crie um Gist **secreto** (não público) em [gist.github.com](https://gist.github.com)
+com um arquivo `cache.json` contendo apenas `{}`. Copie o ID do gist (a parte final
+da URL, ex: `https://gist.github.com/seu-usuario/`**`a1b2c3d4e5f6`**).
+
+### 2. Criar um token só pra escrever no Gist
+
+Em [github.com/settings/tokens](https://github.com/settings/tokens) → "Generate new
+token (classic)" → marque **apenas o escopo `gist`** → gere e copie o token.
+
+### 3. Configurar no repositório
+
+- **Settings → Secrets and variables → Actions → Variables**: adicione `GIST_ID` com o ID copiado no passo 1.
+- **Settings → Secrets and variables → Actions → Secrets**: adicione `GIST_TOKEN` com o token do passo 2.
+
+### 4. Criar um token separado só pra disparar o check-in
+
+Esse token fica **só no seu iPhone** (nunca no GitHub) e precisa poder disparar
+Actions neste repositório. Em
+[github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
+crie um **fine-grained token**, escopo só este repositório, permissões:
+- Contents: **Read and write**
+- Actions: **Read and write**
+
+Copie o token gerado (só aparece uma vez).
+
+### 5. Criar o Atalho no iPhone
+
+No app **Atalhos**, crie um novo atalho (pode virar uma Automação por localização,
+disparando ao chegar na faculdade):
+
+1. Ação **"Obter conteúdo de URL"**
+2. URL: `https://api.github.com/repos/GuilhermeAranega/FALTAS-UNIVAP/dispatches`
+3. Método: `POST`
+4. Cabeçalhos:
+   - `Authorization`: `Bearer SEU_TOKEN_DO_PASSO_4`
+   - `Accept`: `application/vnd.github+json`
+   - `Content-Type`: `application/json`
+5. Corpo (JSON): `{"event_type": "checkin"}`
+
+Ao disparar, a Action `checkin.yml` roda em segundos, registra o dia de hoje (fuso
+de Brasília) e republica o dashboard com a seção "Presença confirmada por mim"
+atualizada — sem depender do que o professor marcou no portal.
+
 ## Testar localmente
 
 ```bash

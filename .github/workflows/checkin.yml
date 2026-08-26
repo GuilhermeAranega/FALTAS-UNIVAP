@@ -1,0 +1,46 @@
+name: Check-in de presença
+
+# Disparado pelo Atalho do iPhone via repository_dispatch (evento "checkin")
+# quando você chega na faculdade. Não roda o Playwright — só lê/atualiza o
+# Gist de cache e republica o dashboard, então é rápido (segundos).
+on:
+  repository_dispatch:
+    types: [checkin]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  checkin:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Registrar check-in e montar dashboard
+        env:
+          GIST_ID: ${{ vars.GIST_ID }}
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+        working-directory: scraper
+        run: python checkin.py
+
+      - name: Preparar artifact do Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

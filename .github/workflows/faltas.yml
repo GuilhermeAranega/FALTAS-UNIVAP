@@ -38,6 +38,14 @@ jobs:
           UNIVAP_PASS: ${{ secrets.UNIVAP_PASS }}
         run: python scraper/scrape.py
 
+      - name: Sincronizar cache no Gist (preserva check-ins de presença)
+        if: ${{ vars.GIST_ID != '' }}
+        env:
+          GIST_ID: ${{ vars.GIST_ID }}
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+        working-directory: scraper
+        run: python sync_cache.py
+
       - name: Upload debug (só se a extração vier vazia)
         if: always()
         uses: actions/upload-artifact@v4

@@ -132,6 +132,19 @@
 
   .erro { text-align: center; color: var(--text-dim); padding: 60px 20px; font-size: 14px; }
 
+  /* Presença manual */
+  .presenca-resumo { font-size: 13.5px; color: var(--text-dim); margin-bottom: 8px; }
+  .presenca-resumo b { color: var(--text); font-weight: 700; }
+  .presenca-lista { display: flex; flex-wrap: wrap; gap: 6px; }
+  .presenca-chip {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 4px 8px;
+  }
+
   /* Semana */
   .dia-tabs {
     display: flex;
@@ -300,7 +313,7 @@ async function load() {
 
 function render() {
   const contentEl = document.getElementById('content');
-  contentEl.innerHTML = renderHoje() + renderSemana() + renderFaltas();
+  contentEl.innerHTML = renderHoje() + renderSemana() + renderFaltas() + renderPresencaManual();
   attachLocalHandlers();
 }
 
@@ -456,6 +469,26 @@ function renderFaltas() {
         <div class="falta-meta ${nivel}"><b>${pct}%</b> · ${diasTexto}</div>
       </div>`;
   });
+  return html;
+}
+
+function renderPresencaManual() {
+  const presencas = DATA.presencas || [];
+  if (presencas.length === 0) return '';
+
+  const ordenadas = [...presencas].sort().reverse();
+  const hoje = new Date();
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const esteMes = presencas.filter(d => new Date(d + 'T00:00:00') >= inicioMes).length;
+
+  let html = '<div class="section-title">Presença confirmada por mim</div>';
+  html += `<div class="presenca-resumo"><b>${esteMes}</b> dia${esteMes === 1 ? '' : 's'} confirmado${esteMes === 1 ? '' : 's'} este mês · registrado direto do celular, independente do portal</div>`;
+  html += '<div class="presenca-lista">';
+  ordenadas.slice(0, 14).forEach(d => {
+    const dt = new Date(d + 'T00:00:00');
+    html += `<span class="presenca-chip">${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}</span>`;
+  });
+  html += '</div>';
   return html;
 }
 
