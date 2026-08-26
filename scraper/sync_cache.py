@@ -30,15 +30,17 @@ def main() -> int:
     cache["frequencia_minima"] = scraped.get("frequencia_minima")
     cache["atualizado_em"] = scraped.get("atualizado_em")
     cache.setdefault("presencas", [])
+    cache.setdefault("faltas_manuais", [])
 
     gist_store.save(gist_id, gist_token, cache)
 
-    # Reescreve docs/data.json incluindo as presenças (check-ins) já
+    # Reescreve docs/data.json incluindo presenças e faltas manuais já
     # registradas, pra elas aparecerem mesmo num deploy do cron diário.
     scraped["presencas"] = cache["presencas"]
+    scraped["faltas_manuais"] = cache["faltas_manuais"]
     DATA_PATH.write_text(json.dumps(scraped, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"Cache atualizado no gist ({len(cache['disciplinas'])} disciplinas, {len(cache['presencas'])} check-ins preservados).")
+    print(f"Cache atualizado no gist ({len(cache['disciplinas'])} disciplinas, {len(cache['presencas'])} check-ins e {len(cache['faltas_manuais'])} faltas manuais preservados).")
     return 0
 
 

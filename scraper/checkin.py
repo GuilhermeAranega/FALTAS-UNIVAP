@@ -48,6 +48,7 @@ def main() -> int:
                 "disciplinas": cache.get("disciplinas", []),
                 "grade": cache.get("grade", []),
                 "presencas": presencas,
+                "faltas_manuais": cache.get("faltas_manuais", []),
             },
             ensure_ascii=False,
             indent=2,

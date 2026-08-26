@@ -452,38 +452,33 @@ function nivelDe(pct) {
   return { nivel: 'ok', cor: 'var(--ok)' };
 }
 
-/** Estima faltas/dias-restantes "segundo seus check-ins" (Atalho do iPhone),
- * independente do que o portal mostra. Só conta a partir do seu primeiro
- * check-in — antes disso não temos como saber se você foi ou não. */
+/** Estima faltas/dias-restantes "segundo você" (check-ins do Atalho +
+ * faltas que você mesmo anotou), independente do que o portal mostra.
+ * Só considera dias com sinal EXPLÍCITO (presença confirmada OU falta
+ * confirmada) — um dia de aula em que você simplesmente esqueceu de
+ * disparar o Atalho não conta pra nenhum dos dois lados. */
 function computeAutotrack(d) {
   const presencas = DATA.presencas || [];
-  if (presencas.length === 0 || !d.codigo) return null;
+  const faltasManuais = DATA.faltas_manuais || [];
+  if ((presencas.length === 0 && faltasManuais.length === 0) || !d.codigo) return null;
 
   const diasComAula = new Set((DATA.grade || []).filter(g => g.codigo === d.codigo).map(g => g.dia_semana_js));
   if (diasComAula.size === 0) return null;
 
-  const datasPresenca = presencas.map(s => new Date(s + 'T00:00:00')).sort((a, b) => a - b);
-  const inicio = datasPresenca[0];
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-
-  let diasEsperados = 0;
-  for (let dt = new Date(inicio); dt <= hoje; dt.setDate(dt.getDate() + 1)) {
-    if (diasComAula.has(dt.getDay())) diasEsperados++;
-  }
+  const diasPresente = presencas.filter(s => diasComAula.has(new Date(s + 'T00:00:00').getDay())).length;
+  const diasFalta = faltasManuais.filter(s => diasComAula.has(new Date(s + 'T00:00:00').getDay())).length;
+  const diasEsperados = diasPresente + diasFalta;
   if (diasEsperados === 0) return null;
 
-  const diasPresente = datasPresenca.filter(dt => diasComAula.has(dt.getDay())).length;
-  const faltasDias = Math.max(0, diasEsperados - diasPresente);
-  const pct = Math.round((faltasDias / diasEsperados) * 1000) / 10;
+  const pct = Math.round((diasFalta / diasEsperados) * 1000) / 10;
 
   let podeFaltarDias = null;
   if (d.aulas_por_dia_medio && d.aulas_previstas != null && DATA.frequencia_minima != null) {
     const budgetDias = Math.floor((d.aulas_previstas * (1 - DATA.frequencia_minima)) / d.aulas_por_dia_medio);
-    podeFaltarDias = Math.max(0, budgetDias - faltasDias);
+    podeFaltarDias = Math.max(0, budgetDias - diasFalta);
   }
 
-  return { pct, podeFaltarDias, faltasDias, desde: inicio };
+  return { pct, podeFaltarDias, faltasDias: diasFalta, diasEsperados };
 }
 
 function renderFaltas() {
@@ -503,7 +498,7 @@ function renderFaltas() {
     if (auto) {
       const { nivel: nivelAuto, cor: corAuto } = nivelDe(auto.pct);
       const diasAutoTexto = auto.podeFaltarDias != null ? `pode faltar mais ${auto.podeFaltarDias} dia${auto.podeFaltarDias === 1 ? '' : 's'}` : `${auto.faltasDias} falta${auto.faltasDias === 1 ? '' : 's'}`;
-      autoHtml = `<div class="falta-meta auto ${nivelAuto}">📍 Segundo seus check-ins: <b style="color:${corAuto}">${auto.pct}%</b> · ${diasAutoTexto}</div>`;
+      autoHtml = `<div class="falta-meta auto ${nivelAuto}">📍 Segundo você (${auto.diasEsperados} dia${auto.diasEsperados === 1 ? '' : 's'} registrado${auto.diasEsperados === 1 ? '' : 's'}): <b style="color:${corAuto}">${auto.pct}%</b> · ${diasAutoTexto}</div>`;
     }
 
     html += `
