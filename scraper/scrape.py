@@ -94,13 +94,15 @@ def build_summary(raw_rows: list[dict]) -> list[dict]:
         situacao = row.get("situacaoMatricula")
         perc_presenca = parse_number(row.get("percPresenca"))
 
-        # O portal já calcula percPresenca (% de presença); preferimos usar
-        # esse valor oficial em vez de recalcular, e só caímos pro cálculo
-        # manual (faltas/aulas) se ele não vier preenchido.
-        if perc_presenca is not None:
+        # Calculamos direto de faltas/aulas (mais confiável); percPresenca é
+        # só fallback, pois o portal retorna 0 nele quando a disciplina ainda
+        # não teve aulas dadas — o que faria parecer 100% de faltas por engano.
+        if faltas is not None and aulas:
+            percentual_faltas = faltas / aulas
+        elif perc_presenca is not None:
             percentual_faltas = 1 - (perc_presenca / 100)
         else:
-            percentual_faltas = (faltas / aulas) if (faltas is not None and aulas) else None
+            percentual_faltas = None
         pode_faltar_ainda = None
         if aulas is not None and faltas is not None:
             limite_faltas = aulas * (1 - FREQUENCIA_MINIMA)
