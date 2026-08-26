@@ -132,6 +132,38 @@
 
   .erro { text-align: center; color: var(--text-dim); padding: 60px 20px; font-size: 14px; }
 
+  /* Semana */
+  .dia-tabs {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    margin-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .dia-tabs::-webkit-scrollbar { display: none; }
+  .dia-tab {
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 13px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .dia-tab.ativo { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .dia-tab .ponto {
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    margin-left: 6px;
+    opacity: 0.55;
+    vertical-align: middle;
+  }
+
   /* Bottom sheet */
   .sheet-overlay {
     position: fixed; inset: 0;
@@ -201,8 +233,11 @@
 const DIAS_PT = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
 const MESES_PT = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 
+const DIAS_ABREV = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+
 let DATA = null;
 let sheetCodigoAtual = null;
+let selectedDia = new Date().getDay();
 
 function getClassLocations() {
   try {
@@ -265,7 +300,7 @@ async function load() {
 
 function render() {
   const contentEl = document.getElementById('content');
-  contentEl.innerHTML = renderHoje() + renderFaltas();
+  contentEl.innerHTML = renderHoje() + renderSemana() + renderFaltas();
   attachLocalHandlers();
 }
 
@@ -275,16 +310,19 @@ function minutosParaTexto(min) {
   return m === 0 ? `${h}H` : `${h}H ${m}MIN`;
 }
 
-function renderHoje() {
+function getAulasDoDia(diaSemana) {
   const grade = DATA.grade || [];
-  const now = new Date();
-  const diaSemana = now.getDay();
-  const agoraMin = now.getHours() * 60 + now.getMinutes();
-
-  const aulasHoje = grade
+  return grade
     .filter(a => a.dia_semana_js === diaSemana)
     .map(a => ({ ...a, inicioMin: toMinutes(a.inicio), fimMin: toMinutes(a.fim) }))
     .sort((a, b) => a.inicioMin - b.inicioMin);
+}
+
+function renderHoje() {
+  const now = new Date();
+  const diaSemana = now.getDay();
+  const agoraMin = now.getHours() * 60 + now.getMinutes();
+  const aulasHoje = getAulasDoDia(diaSemana);
 
   let html = '<div class="section-title">Hoje</div>';
 
@@ -319,6 +357,52 @@ function renderHoje() {
           <div class="tag">${tag}</div>
           ${renderCorpoAula(a, false)}
         </div>`;
+    } else {
+      html += `<div class="aula-row ${isPassada ? 'passada' : ''}">
+        <div class="aula-check">${isPassada ? '✓' : ''}</div>
+        <div class="aula-body">${renderCorpoAula(a, true)}</div>
+      </div>`;
+    }
+  });
+  html += '</div>';
+  return html;
+}
+
+function renderSemana() {
+  const grade = DATA.grade || [];
+  if (grade.length === 0) return '';
+
+  const hojeIdx = new Date().getDay();
+  const diasComAula = new Set(grade.map(a => a.dia_semana_js));
+
+  let html = '<div class="section-title">Semana</div><div class="dia-tabs">';
+  for (let i = 0; i < 7; i++) {
+    const ativo = i === selectedDia ? 'ativo' : '';
+    const marcador = diasComAula.has(i) ? '<span class="ponto"></span>' : '';
+    html += `<button class="dia-tab ${ativo}" data-dia="${i}">${DIAS_ABREV[i]}${i === hojeIdx ? ' · hoje' : ''}${marcador}</button>`;
+  }
+  html += '</div>';
+
+  const aulas = getAulasDoDia(selectedDia);
+  if (aulas.length === 0) {
+    return html + '<div class="vazio">Nenhuma aula nesse dia.</div>';
+  }
+
+  const now = new Date();
+  const agoraMin = now.getHours() * 60 + now.getMinutes();
+  const ehHoje = selectedDia === hojeIdx;
+  const atual = ehHoje ? aulas.find(a => agoraMin >= a.inicioMin && agoraMin < a.fimMin) : null;
+  const proxima = ehHoje && !atual ? aulas.find(a => a.inicioMin > agoraMin) : null;
+
+  html += '<div class="aula-list">';
+  aulas.forEach(a => {
+    const isPassada = ehHoje && a.fimMin <= agoraMin;
+    const isAtual = atual === a;
+    const isProxima = proxima === a;
+
+    if (isAtual || isProxima) {
+      const tag = isAtual ? 'AGORA' : `PRÓXIMA · EM ${minutosParaTexto(a.inicioMin - agoraMin)}`;
+      html += `<div class="aula-destaque"><div class="tag">${tag}</div>${renderCorpoAula(a, false)}</div>`;
     } else {
       html += `<div class="aula-row ${isPassada ? 'passada' : ''}">
         <div class="aula-check">${isPassada ? '✓' : ''}</div>
@@ -378,6 +462,12 @@ function renderFaltas() {
 function attachLocalHandlers() {
   document.querySelectorAll('.aula-local').forEach(el => {
     el.addEventListener('click', () => abrirSheet(el.dataset.codigo, el.dataset.nome));
+  });
+  document.querySelectorAll('.dia-tab').forEach(el => {
+    el.addEventListener('click', () => {
+      selectedDia = Number(el.dataset.dia);
+      render();
+    });
   });
 }
 
