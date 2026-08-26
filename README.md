@@ -19,7 +19,9 @@ ninguém apareçam no código ou no histórico do git.
 ## Setup (uma vez só, por pessoa)
 
 Cada aluno deve usar sua **própria cópia** (fork) do repositório — nunca compartilhe
-suas credenciais no fork de outra pessoa.
+suas credenciais no fork de outra pessoa. Secrets e variables do GitHub Actions
+**não são copiados automaticamente** quando alguém dá fork, então cada pessoa
+repete todo o setup abaixo (incluindo a seção de check-in) no próprio fork.
 
 1. Dê **Fork** neste repositório (ou clone e suba pro seu próprio repo novo):
    ```bash
@@ -79,7 +81,8 @@ No app **Atalhos**, crie um novo atalho (pode virar uma Automação por localiza
 disparando ao chegar na faculdade):
 
 1. Ação **"Obter conteúdo de URL"**
-2. URL: `https://api.github.com/repos/GuilhermeAranega/FALTAS-UNIVAP/dispatches`
+2. URL: `https://api.github.com/repos/<seu-usuario>/<seu-fork>/dispatches` (troque pelo
+   seu próprio usuário/repositório — cada fork dispara só a própria Action)
 3. Método: `POST`
 4. Cabeçalhos:
    - `Authorization`: `Bearer SEU_TOKEN_DO_PASSO_4`
