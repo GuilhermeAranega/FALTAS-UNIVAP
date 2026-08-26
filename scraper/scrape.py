@@ -32,7 +32,9 @@ DEBUG_DIR = Path(__file__).resolve().parent.parent / "debug"
 FREQUENCIA_MINIMA = 0.75
 
 # Colunas do grid de horário (T007D), na ordem Segunda -> Domingo.
-DIAS_SEMANA = ["descHorario2", "descHorario3", "descHorario4", "descHorario5", "descHorario6", "descHorario7", "descHorario1"]
+# O nome da classe CSS usa o "id" do campo definido no JS (gpfSegunda...),
+# não o "name" (descHorario2...) — confirmado inspecionando o HTML renderizado.
+DIAS_SEMANA = ["gpfSegunda", "gpfTerca", "gpfQuarta", "gpfQuinta", "gpfSexta", "gpfSabado", "gpfDomingo"]
 
 
 def login(page, usuario: str, senha: str) -> None:
@@ -89,7 +91,8 @@ def extract_horario(page) -> list[dict]:
     page.wait_for_timeout(3000)
 
     rows = extract_grid_by_col_classes(page, "#grpHorarioAulas")
-    _save_debug(page, "horario")  # TEMP: sempre salva pra investigar estrutura real do grid
+    if not rows:
+        _save_debug(page, "horario")
     return rows
 
 
